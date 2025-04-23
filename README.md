@@ -1,5 +1,5 @@
 Förord
-Jag vet att man skulle använda REACT. Jag har inte lärt mig det ännu, men kommer att ha gjort detta till sommaren. Läste inte heller square-logiken i programmet. 
+Jag vet att man skulle använda REACT. Jag har inte lärt mig det ännu, men kommer att ha gjort detta till sommaren. Löste inte heller square-logiken i programmet. 
 
 
 Så API:t fungerar med ett enkelt REST Web api i ASP.NET core som hanterar rutor. med position x,y och föärg. Den använder en lokal json-fil som datalagring. Personligen använder jag mer databaser med EF core vanligtvis. 
