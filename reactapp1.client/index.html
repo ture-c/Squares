@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Box Generator</title>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        .app {
+            text-align: center;
+            background-color: #282c34;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .add-button, .clear-button {
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .add-button, clear-button {
+            color: black;
+        }
+
+        .canvas {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background-color: white;
+            margin-top: 20px;
+            border: 1px solid #ccc;
+        }
+
+        .box {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+        }
+
+        
+    </style>
+</head>
+<body>
+    <div id="app" class="app">
+        <h1>Box Generator</h1>
+        <div class="button-container">
+            <button id="addBox" class="add-button">Lägg till ruta</button>
+            <button id="clearBoxes" class="clear-button">Clear All Boxes</button>
+        </div>
+        <div id="error" class="error-message" style="display: none;"></div>
+        <div id="loading" style="display: none;">Loading...</div>
+        <div id="canvas" class="canvas"></div>
+        <p id="info" class="info"></p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const API_URL = 'https://localhost:7045/api/boxes'; // Updatera med din url
+            const boxesContainer = document.getElementById('canvas');
+            const loadingElement = document.getElementById('loading');
+            const errorElement = document.getElementById('error');
+            const addBoxButton = document.getElementById('addBox');
+            const clearBoxesButton = document.getElementById('clearBoxes');
+            const infoElement = document.getElementById('info');
+
+            let boxes = [];
+
+            const BOX_SIZE = 100;
+            const BOX_MARGIN = 10;
+            const BOXES_PER_ROW = 7;
+            const BOXES_PER_COLUMN = 5; 
+
+            fetchBoxes();
+
+            addBoxButton.addEventListener('click', addBox);
+            clearBoxesButton.addEventListener('click', clearAllBoxes);
+
+            async function fetchBoxes() {
+                try {
+                    showLoading();
+                    const response = await fetch(API_URL);
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch boxes');
+                    }
+
+                    boxes = await response.json();
+                    renderBoxes();
+                    hideError();
+                } catch (err) {
+                    showError('Failed to load boxes. Please try again later.');
+                    console.error(err);
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            async function clearAllBoxes() {
+                try {
+                    showLoading();
+                    const response = await fetch(API_URL, {
+                        method: 'DELETE'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to clear boxes');
+                    }
+
+                    boxes = [];
+                    renderBoxes();
+                    hideError();
+                } catch (err) {
+                    showError('Failed to clear boxes. Please try again.');
+                    console.error(err);
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            function getNextPosition() {
+                const index = boxes.length;
+                return getPositionForIndex(index);
+            }
+
+            async function addBox() {
+                try {
+                    const newBox = {
+                        ...getNextPosition(),
+                        color: getRandomColor()
+                    };
+
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(newBox)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to add box');
+                    }
+
+                    const savedBox = await response.json();
+                    boxes.push(savedBox);
+                    renderBoxes();
+                    hideError();
+                } catch (err) {
+                    showError('Failed to add box. Please try again.');
+                    console.error(err);
+                }
+            }
+
+            function getRandomColor() {
+                const letters = '0123456789ABCDEF';
+                let color = '#';
+                for (let i = 0; i < 6; i++) {
+                    color += letters[Math.floor(Math.random() * 16)];
+                }
+                return color;
+            }
+
+            function renderBoxes() {
+                boxesContainer.innerHTML = '';
+
+                boxes.forEach((box, index) => {
+                    const position = getPositionForIndex(index);
+
+                    box.x = position.x;
+                    box.y = position.y;
+
+                    const boxElement = document.createElement('div');
+                    boxElement.className = 'box';
+                    boxElement.style.backgroundColor = box.color;
+                    boxElement.style.left = `${position.x}px`;
+                    boxElement.style.top = `${position.y}px`;
+                    boxElement.style.width = `${BOX_SIZE}px`;
+                    boxElement.style.height = `${BOX_SIZE}px`;
+
+                    boxElement.style.display = 'flex';
+                    boxElement.style.justifyContent = 'center';
+                    boxElement.style.alignItems = 'center';
+                    boxElement.style.fontSize = '24px';
+                    boxElement.style.fontWeight = 'bold';
+                    boxElement.style.color = 'white';
+                    boxElement.style.textShadow = '1px 1px 2px black';
+
+                    boxesContainer.appendChild(boxElement);
+                });
+
+                boxesContainer.style.display = 'block';
+            }
+
+            function getPositionForIndex(index) {
+                
+                if (index === 0) {
+                    return { x: 0, y: 0 };
+                }
+
+                const boxesPerCircuit = BOXES_PER_COLUMN + BOXES_PER_ROW - 1;
+                const circuitNumber = Math.floor(index / boxesPerCircuit);
+                const positionInCircuit = index % boxesPerCircuit;
+
+                
+                const startX = circuitNumber * (BOX_SIZE + BOX_MARGIN);
+
+                if (positionInCircuit < BOXES_PER_COLUMN) {
+                    
+                    return {
+                        x: startX,
+                        y: positionInCircuit * (BOX_SIZE + BOX_MARGIN)
+                    };
+                } else {
+                    
+                    const rightPosition = positionInCircuit - BOXES_PER_COLUMN + 1;
+                    return {
+                        x: startX + rightPosition * (BOX_SIZE + BOX_MARGIN),
+                        y: (BOXES_PER_COLUMN - 1) * (BOX_SIZE + BOX_MARGIN)
+                    };
+                }
+            }
+
+            
+            function showLoading() {
+                loadingElement.style.display = 'block';
+                boxesContainer.style.display = 'none';
+            }
+
+            function hideLoading() {
+                loadingElement.style.display = 'none';
+                boxesContainer.style.display = 'block';
+            }
+
+            function showError(message) {
+                errorElement.textContent = message;
+                errorElement.style.display = 'block';
+            }
+
+            function hideError() {
+                errorElement.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
